@@ -3,21 +3,21 @@ import datetime
 
 def prettify_cron(expression):
     pieces = []
-    for piece in expression.split(" "):
-        if piece != "*" and "," not in piece:
+    for i, piece in enumerate(expression.split(" ")):
+        if i == 3 and ',' in piece:  # support comma-separated values for month
+            try:
+                piece = tuple(int(p) for p in piece.split(','))
+            except ValueError:
+                # non-integers in comma-separated list aren't supported yet -
+                # return as-is
+                return expression
+        elif piece != '*':
             try:
                 piece = int(piece)
             except ValueError:
                 # */2 and other cron expressions aren't supported yet - return
                 # as-is
                 return expression
-        elif "," in piece:
-            splitter = piece.split(",")
-            try:
-                splitter = [int(p) for p in splitter]
-            except ValueError:
-                return expression
-            piece = tuple(splitter)
         pieces.append(piece)
     try:
         minute, hour, month_day, month, week_day = pieces
@@ -71,12 +71,24 @@ def _pretty_date(month_day, month, week_day):
 
 def _human_month(month):
     if isinstance(month, tuple):
-        months = [datetime.date(2014, m, 1).strftime("%B") for m in month]
-        rest, last, two = months[:-2],months[-2],months[-1]
-        if rest:
-            return ", ".join(rest) + ", {} and {}".format(last, two)
-        return "{} and {}".format(last, two)
-    return datetime.date(2014, month, 1).strftime("%B")
+        months = month
+    else:
+        months = (month,)
+
+    return _human_list([
+        datetime.date(2014, m, 1).strftime('%B')
+        for m in months
+    ])
+
+
+def _human_list(listy):
+    if len(listy) == 1:
+        return listy[0]
+
+    rest, penultimate, ultimate = listy[:-2], listy[-2], listy[-1]
+    if rest:
+        return ", ".join(rest) + ", {} and {}".format(penultimate, ultimate)
+    return "{} and {}".format(penultimate, ultimate)
 
 
 _WEEKDAYS = {
@@ -87,6 +99,7 @@ _WEEKDAYS = {
     4: "Thursday",
     5: "Friday",
     6: "Saturday",
+    7: "Sunday",
 }
 
 
